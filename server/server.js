@@ -2,6 +2,9 @@ const express = require('express')
 const cors = require('cors')
 const mongoose = require('mongoose')
 const ProductModel = require('./product')
+const { protect, authorize } = require('./middleware/auth')
+const { registerUser, loginUser, getUserProfile } = require('./controllers/authController')
+require('dotenv').config()
 
 const app = express()
 
@@ -14,8 +17,13 @@ mongoose.connect('mongodb://127.0.0.1:27017/Company')
   .then(() => console.log('✅ DB connected'))
   .catch(err => console.log('❌ DB connection error:', err))
 
+// Auth Routes
+app.post('/api/users/register', registerUser)
+app.post('/api/users/login', loginUser)
+app.get('/api/users/profile', protect, getUserProfile)
+
 // ==================== CREATE ====================
-app.post('/products', async (req, res) => {
+app.post('/products', protect, async (req, res) => {
   try {
     const product = await ProductModel.create(req.body)
     res.status(201).json({ message: '✅ Product Created Successfully', product })
@@ -35,7 +43,7 @@ app.get('/products', async (req, res) => {
 })
 
 // ==================== UPDATE ====================
-app.put('/products/:id', async (req, res) => {
+app.put('/products/:id', protect, async (req, res) => {
   const { id } = req.params
   try {
     const updatedProduct = await ProductModel.findByIdAndUpdate(id, req.body, { new: true })
@@ -47,7 +55,7 @@ app.put('/products/:id', async (req, res) => {
 })
 
 // ==================== DELETE ====================
-app.delete('/products/:id', async (req, res) => {
+app.delete('/products/:id', protect, authorize('admin'), async (req, res) => {
   const { id } = req.params
   try {
     const deletedProduct = await ProductModel.findByIdAndDelete(id)
@@ -59,7 +67,7 @@ app.delete('/products/:id', async (req, res) => {
 })
 
 // Start Server
-const PORT = 8000
+const PORT = process.env.PORT || 8000
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`)
 })
